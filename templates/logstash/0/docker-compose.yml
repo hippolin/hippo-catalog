@@ -1,0 +1,22 @@
+version: '2'
+services:
+  logstash-collector-config:
+    image: hippo36367/logstash-config
+    labels:
+      io.rancher.container.hostname_override: container_name
+  logstash-collector:
+    image: docker.elastic.co/logstash/logstash:5.5.1
+    stdin_open: true
+    environment:
+      xpack.security.enabled: 'false'
+    volumes_from:
+    - logstash-collector-config
+    ports:
+    - 5044:5044
+    labels:
+      logstash: 'true'
+      io.rancher.scheduler.affinity:container_label_soft_ne: logstash=true
+      io.rancher.sidekicks: logstash-collector-config
+      io.rancher.container.hostname_override: container_name
+    external_links:
+    - ${elasticsearch_link}:elasticsearch
