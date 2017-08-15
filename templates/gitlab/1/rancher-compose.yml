@@ -63,7 +63,12 @@ catalog:
       label: "Gitlab Data Volume Size:"
       required: true
       default: 100
-      type: "int" 
+      type: "int"
+    - variable: "private_key"
+      label: "Private Key"
+      description: |
+        The private key
+      type: certificate
 gitlab-server:
   scale: 1
   retain_ip: true
