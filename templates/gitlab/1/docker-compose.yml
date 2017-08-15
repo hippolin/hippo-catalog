@@ -1,0 +1,61 @@
+version: '2'
+volumes:
+  gitlab-app-data:
+    driver: ${volumedriver}
+    {{- if eq .Values.volumedriver "rancher-ebs" }}
+    driver_opts:
+      size: ${gitlab_data_volume_size}
+      volumeType: gp2
+    {{- end}}
+  gitlab-log-data:
+    driver: ${volumedriver}
+    {{- if eq .Values.volumedriver "rancher-ebs" }}
+    driver_opts:
+      size: 10
+      volumeType: gp2
+    {{- end}}
+  gitlab-conf-files:
+    driver: ${volumedriver}
+    {{- if eq .Values.volumedriver "rancher-ebs" }}
+    driver_opts:
+      size: 1
+      volumeType: gp2
+    {{- end}}
+
+
+services:
+  gitlab-server:
+    ports:
+      - ${ssh_port}:22/tcp
+      - ${http_port}:${http_port}/tcp
+      - ${https_port}:${https_port}/tcp
+    labels:
+      io.rancher.container.hostname_override: container_name
+    image: gitlab/gitlab-ce:9.4.5-ce.0
+    volumes:
+      - gitlab-app-data:/var/opt/gitlab
+      - gitlab-log-data:/var/log/gitlab
+      - gitlab-conf-files:/etc/gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        gitlab_rails['lfs_enabled'] = true
+        {{- if eq .Values.gitlab_omnipus_prefix "http://" }}
+        {{- if eq .Values.http_port "80" }}
+        external_url '${gitlab_omnipus_prefix}${gitlab_hostname}'
+        registry_external_url '${gitlab_omnipus_prefix}${registry_gitlab_hostname}'
+        {{ else }}
+        external_url '${gitlab_omnipus_prefix}${gitlab_hostname}:${http_port}'
+        registry_external_url '${gitlab_omnipus_prefix}${registry_gitlab_hostname}:${http_port}'
+        {{- end}}
+        {{- else }}
+        {{- if eq .Values.https_port "443" }}
+        external_url '${gitlab_omnipus_prefix}${gitlab_hostname}'
+        registry_external_url '${gitlab_omnipus_prefix}${registry_gitlab_hostname}'
+        {{ else }}
+        external_url '${gitlab_omnipus_prefix}${gitlab_hostname}:${https_port}'
+        registry_external_url '${gitlab_omnipus_prefix}${registry_gitlab_hostname}:${https_port}'
+        {{- end}}        
+        {{- end}}
+        {{- if ne .Values.ssh_port "22" }}
+        gitlab_rails['gitlab_shell_ssh_port'] = ${ssh_port}
+        {{- end}}
