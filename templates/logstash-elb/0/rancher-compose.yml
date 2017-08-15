@@ -1,0 +1,129 @@
+version: '2'
+catalog:
+  name: "Logstash-ELB"
+  version: "5.5.1"
+  questions:
+    - variable: "AWS_ACCESS_KEY"
+      label: "AWS Access Key ID"
+      description: "Access key ID for your AWS account (not required if using EC2 IAM role)"
+      type: "string"
+      required: false
+    - variable: "AWS_SECRET_KEY"
+      label: "AWS Secret Access Key"
+      description: "Secret access key for your AWS account (not required if using EC2 IAM role)"
+      type: "string"
+      required: false
+    - variable: "bucket"
+      label: "S3 Bucket"
+      description: "The name of the S3 bucket."
+      type: "string"
+      required: true
+    - variable: "prefix"
+      label: "Prefix"
+      description: "If specified, the prefix of filenames in the bucket must match (not a regexp)"
+      default: "AWSLogs/"
+      type: "string"
+      required: true
+    - variable: "region"
+      label: "AWS Region"
+      description: "The AWS Region"
+      default: "ap-northeast-1"
+      required: true
+      type: "enum"
+      options:
+        - us-east-1
+        - us-east-2
+        - us-west-1
+        - us-west-2
+        - eu-central-1
+        - eu-west-1
+        - eu-west-2
+        - ap-southeast-1
+        - ap-southeast-2
+        - ap-northeast-1
+        - ap-northeast-2
+        - sa-east-1
+        - us-gov-west-1
+        - cn-north-1
+        - ap-south-1
+        - ca-central-1
+    - variable: "delete"
+      label: "Delete processed files?"
+      description: |
+        Whether to delete processed files from the original bucket.
+      default: false
+      type: "boolean"
+      required: false
+    - variable: "elasticsearch_index"
+      label: "Elasticsearch Index"
+      description: |
+        The index to write events to.
+      default: "logstash-elb-logs-%{+YYYY.MM.dd}"
+      type: "string"
+      required: true
+    - variable: "elasticsearch_link"
+      description: |
+        stack/service link or external service link to elasticsearch
+        cluster.
+      label: "Elasticsearch stack/service"
+      default: "es-cluster/es-master"
+      required: true
+      type: "service"
+services:
+  logstash-collector-config:
+    scale: 1
+  logstash-collector:
+    scale: 1
+    metadata:
+      logstash:
+        filters: |
+          grok {
+            match => ["message", "%{ELB_ACCESS_LOG} %{QS:user_agent}"]
+          }
+          mutate {
+            gsub => [
+              "user_agent", "^\"", "",
+              "user_agent", "\"$$", ""
+            ]
+          }
+          date {
+            match => [ "timestamp", "ISO8601" ]
+          }
+          geoip {
+            source => "clientip"
+            add_field => [ "[geoip][coordinates]", "%{[geoip][longitude]}" ]
+            add_field => [ "[geoip][coordinates]", "%{[geoip][latitude]}"  ]
+          }
+          mutate {
+            convert => [ "[geoip][coordinates]", "float"]
+          }
+          useragent {
+            source => "user_agent"
+            prefix => "client_"
+          }
+        inputs: |
+          s3 {
+            bucket => "${bucket}"
+            prefix => "${prefix}"
+            region => "${region}"
+            access_key_id => "${AWS_ACCESS_KEY}"
+            secret_access_key => "${AWS_SECRET_KEY}"
+            delete => ${delete}
+            interval => 60
+            sincedb_path => "/usr/share/logstash/data/.sincedb_s3"
+          }
+        outputs: |
+          elasticsearch {
+            hosts => ["elasticsearch"]
+            index => "${elasticsearch_index}"
+          }
+    health_check:
+      response_timeout: 2000
+      healthy_threshold: 2
+      port: 9600
+      unhealthy_threshold: 3
+      initializing_timeout: 60000
+      interval: 2000
+      strategy: recreate
+      request_line: GET "/" "HTTP/1.0"
+      reinitializing_timeout: 60000

@@ -1,0 +1,42 @@
+version: '2'
+services:
+  logstash-collector-config:
+    image: hippo36367/logstash-config
+    labels:
+      io.rancher.container.hostname_override: container_name
+  logstash-collector:
+    image: docker.elastic.co/logstash/logstash:5.5.1
+    stdin_open: true
+    mem_limit: 1073741824
+    mem_reservation: 1073741824
+    cpu_shares: 500
+    environment:
+      xpack.security.enabled: 'false'
+    volumes_from:
+    - logstash-collector-config
+    - logstash-datavolume
+    labels:
+      logstash: 'true'
+      io.rancher.scheduler.affinity:container_label_soft_ne: logstash=true
+      io.rancher.sidekicks: logstash-collector-config, logstash-datavolume
+      io.rancher.container.hostname_override: container_name
+    external_links:
+    - ${elasticsearch_link}:elasticsearch
+  logstash-datavolume:
+    image: rawmind/alpine-volume:0.0.2-1
+    environment:
+      SERVICE_GID: '1000'
+      SERVICE_UID: '1000'
+      SERVICE_VOLUME: /usr/share/logstash/data
+    network_mode: none
+    volumes:
+    - logstash-datavolume:/usr/share/logstash/data
+    labels:
+      io.rancher.container.start_once: 'true'
+volumes:
+  logstash-datavolume:
+    driver_opts:
+      size: '1'
+      volumeType: gp2
+    driver: rancher-ebs
+    per_container: true

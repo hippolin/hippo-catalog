@@ -1,0 +1,5 @@
+name: Logstash-ELB
+description: |
+  Ingest AWS ELB accesslog to Elasticsearch.
+version: 5.5.1
+category: ELK
