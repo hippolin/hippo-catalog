@@ -21,7 +21,10 @@ volumes:
       size: 1
       volumeType: gp2
     {{- end}}
-
+  letsencrypt:
+    driver_opts:
+      size: '1'
+    driver: rancher-ebs
 
 services:
   gitlab-server:
@@ -31,11 +34,14 @@ services:
       - ${https_port}:${https_port}/tcp
     labels:
       io.rancher.container.hostname_override: container_name
+      io.rancher.sidekicks: letsencrypt
     image: gitlab/gitlab-ce:9.4.5-ce.0
     volumes:
       - gitlab-app-data:/var/opt/gitlab
       - gitlab-log-data:/var/log/gitlab
       - gitlab-conf-files:/etc/gitlab
+    volumes_from:
+      - letsencrypt
     environment:
       GITLAB_OMNIBUS_CONFIG: |
         gitlab_rails['lfs_enabled'] = true
@@ -59,3 +65,24 @@ services:
         {{- if ne .Values.ssh_port "22" }}
         gitlab_rails['gitlab_shell_ssh_port'] = ${ssh_port}
         {{- end}}
+        nginx['ssl_certificate'] = '/etc/letsencrypt/production/certs/gitlab/fullchain.pem'
+        nginx['ssl_certificate_key'] = '/etc/letsencrypt/production/certs/gitlab/privkey.pem'
+  letsencrypt:
+    image: janeczku/rancher-letsencrypt:v0.5.0
+    environment:
+      API_VERSION: Production
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      CERT_NAME: gitlab
+      DOMAINS: ${gitlab_hostname}, ${registry_gitlab_hostname}
+      EMAIL: ${EMAIL}
+      EULA: 'Yes'
+      PROVIDER: Route53
+      PUBLIC_KEY_TYPE: RSA-2048
+      RENEWAL_TIME: '12'
+    volumes:
+    - /var/lib/rancher:/var/lib/rancher
+    - letsencrypt:/etc/letsencrypt
+    labels:
+      io.rancher.container.agent.role: environment
+      io.rancher.container.create_agent: 'true'
