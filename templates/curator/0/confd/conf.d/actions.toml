@@ -1,0 +1,6 @@
+[template]
+src = "actions.yml.tmpl"
+dest = "/data/actions.yml"
+keys = [
+    "/self/service/metadata/actions"
+]

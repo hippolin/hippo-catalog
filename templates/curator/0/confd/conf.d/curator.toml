@@ -1,0 +1,5 @@
+[template]
+src = "curator.yml.tmpl"
+dest = "/data/curator.yml"
+keys = [
+]

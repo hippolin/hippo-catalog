@@ -1,0 +1,20 @@
+version: '2'
+services:
+  curator-cronjob:
+    image: cndtw/curator-cronjob
+    external_links:
+      - ${elasticsearch_link}:elasticsearch
+    working_dir: /data
+    command: --config curator.yml actions.yml
+    volumes_from:
+      - curator-config
+    labels:
+      io.rancher.sidekicks: curator-config
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      cron.schedule: ${CRON_SCHEDULE}
+
+  curator-config:
+    image: cndtw/curator-config
+    labels:
+      io.rancher.container.hostname_override: container_name
