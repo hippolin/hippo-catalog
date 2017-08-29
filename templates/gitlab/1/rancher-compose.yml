@@ -64,22 +64,11 @@ catalog:
       required: true
       default: 100
       type: "int"
-    - variable: EMAIL
-      label: Your Email Address
+    - variable: "private_key"
+      label: "Private Key"
       description: |
-        Enter the email address to use for creating the Let's Encrypt account.
-      required: true
-      type: string
-    - variable: AWS_ACCESS_KEY
-      label: AWS Route53 Access Key Id
-      description: Enter the Access Key Id for your AWS account.
-      type: string
-      required: false
-    - variable: AWS_SECRET_KEY
-      label: AWS Route53 Secret Access Key
-      description: Enter the Secret Access Key for your AWS account.
-      type: password
-      required: false
+        The private key
+      type: certificate
 gitlab-server:
   scale: 1
   retain_ip: true
